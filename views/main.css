@@ -1,2 +1,102 @@
-body { margin: 0; background: black; color: white; }
+body {
+  font-family: courier, monospace;
+  font-weight: 600;
+  background: black;
+  color: limegreen;
+  margin: 0;
+}
+a { filter: hue-rotate(13deg) brightness(200%); }
+.weather {
+  height: 50vh;
+  overflow: auto;
+  position: relative;
+}
+h1 {
+  padding: .5ch;
+}
+#container-to-insert-templates {
+  margin: 2ch;
+}
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1em;
+}
+.load-more-container button {
+  background: unset;
+  border: unset;
+  color: unset;
+  font-size: unset;
+  font-family: unset;
+  border: 1px solid;
+  border-radius: 4px;
+  background: limegreen;
+  color: black;
+}
+.load-more-container button:hover {
+  outline: 2px solid lime;
+  background: lime;
+}
+.load-more-container button[disabled] {
+  outline: 2px solid lightGray;
+  background: gray;
+  cursor: not-allowed;
+}
+.scroll-indicator {
+  height: 24px;
+  position: sticky;
+  background: linear-gradient(#0001, black);
+  width: 100%;
+  bottom: 0;
+}
+.deg {
+  width: 1ch;
+  transition: transform .25s;
+}
+.flex {
+  display: flex;
+}
+.col {
+  flex-direction: column;
+}
+.space-between { justify-content: space-between; }
+.space-around { justify-content: space-around; }
+.hourly, .hourly-labels, .hourly > div, .hourly-labels > div {
+/*   outline: 1px solid green; */
+}
+.hourly-labels > .label {
+  color: transparent;
+}
 
+#mapid {
+  height: 50vh;
+}
+.forecast {
+  padding-bottom: 1em;
+}
+.uvi {
+  color: black;
+}
+
+.current, .next-four-hours {
+  outline: 1px solid limegreen;
+  padding: 1em;
+}
+
+.leaflet-control-container > * {
+  filter: invert(1);
+}
+.leaflet-tile-container img {
+  filter: invert(1) hue-rotate(-120deg);
+}
+.loading-spinner-container {
+  display: flex;
+  justify-content: center;
+  filter: invert(1);
+  margin-bottom: 1em;
+}
+.links {
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+}
