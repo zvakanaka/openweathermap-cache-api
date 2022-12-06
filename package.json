@@ -1,0 +1,20 @@
+{
+  "name": "openweathermap-cache-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test/index.js",
+    "watch": "chokidar \"views/**\" \"**/*.js\" -c \"sleep 3 && npm start\""
+  },
+  "keywords": [],
+  "author": "Adam Quinton",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "chokidar-cli": "^3.0.0"
+  }
+}
