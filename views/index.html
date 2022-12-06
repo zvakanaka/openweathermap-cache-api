@@ -1,1 +1,324 @@
-hello
+<div class="weather">
+  <h1>Weather</h1>
+  <div class="current">
+    <div>
+      <span>Temp</span>
+      <span class="temp"></span><span>&deg;</span>
+    </div>
+    <div>
+      <span>Feels Like</span>
+      <span class="feels_like"></span><span>&deg;</span>
+    </div>
+    <div>
+      <span>Humidity</span>
+      <span class="humidity"></span><span>%</span>
+    </div>
+    <div class="flex">
+      <span>Wind</span>&nbsp;
+      <span class="wind"></span><span>mph</span>&nbsp;
+      <span>
+        <div class="deg">^</div>
+      </span>
+    </div>
+  </div>
+  <template class="four-hour-forecast-template">
+    <div class="forecast next-four-hours">
+      <div class="hourly-labels flex space-around">
+        <div class="label">Label</div>
+        <div>Loading</div>
+        <div>Loading</div>
+        <div>Loading</div>
+        <div>Loading</div>
+      </div>
+      <div class="hourly flex space-around">
+        <div class="flex col label">
+          <div>Temp</div>
+          <div>Feel</div>
+          <div>Hum</div>
+          <div><a href="https://www.epa.gov/sunsafety/uv-index-scale-0" target="_blank">UVI</a></div>
+          <div>Wind</div>
+        </div>
+        <div class="flex col"></div>
+        <div class="flex col"></div>
+        <div class="flex col"></div>
+        <div class="flex col"></div>
+      </div>
+    </div>
+  </template>
+  <div id="container-to-insert-templates"></div>
+  
+<div class="loading-spinner-container">
+<!--  Thanks: https://ohadschn.gitlab.io/2014/08/getting-spinner-gifs-from-a-cdn/  -->
+  <img src="https://cdnjs.cloudflare.com/ajax/libs/galleriffic/2.0.1/css/loader.gif" alt="loading spinner" />
+</div>
+
+  <div class="load-more-container">
+    <button class="add-four-hour-forecast">Load More</button>
+  </div>
+
+  <div class="links">
+    <a href="https://home.openweathermap.org/api_keys" target="_blank">Open Weather Map API Key</a>
+    <a id="map-link" href="" target="_blank"></a>
+    <p id="status"></p>
+  </div>
+  
+  <div class="scroll-indicator"></div>
+</div>
+
+  <template id="map-template">
+    <div id='mapid'></div>
+</template>
+<div id="map-container">
+  
+</div>
+<script>
+  console.clear();
+const state = {
+  numFourHourForecasts: 1,
+  mapZoom: 10,
+  lat: null,
+  lng: null
+};
+const status = document.querySelector("#status");
+const mapLink = document.querySelector("#map-link");
+
+const template = document.querySelector("template.four-hour-forecast-template");
+const mapTemplate = document.querySelector("#map-template");
+const loadMoreButton = document.querySelector(".add-four-hour-forecast");
+const CHECK_WEATHER_INTERVAL = 1000 * 60 * 15; // 15 minute
+function resetMap() {
+  // https://stackoverflow.com/a/57851995/4151489
+  const mapContainer = document.getElementById("map-container");
+  const mapElInstance = mapTemplate.content.cloneNode(true);
+  while (mapContainer.firstChild) {
+    mapContainer.removeChild(mapContainer.firstChild);
+  }
+  mapContainer.appendChild(mapElInstance);
+}
+const drawWeather = async () => {
+  const spinner = document.querySelector(".loading-spinner-container");
+  spinner.style.display = "flex";
+  loadMoreButton.disabled = true;
+  
+  const { lon, lat } =
+    state.lon !== null && state.lat !== null ? state : await getLonLat();
+  state.lon = lon;
+  state.lat = lat;
+  console.log({ lon, lat });
+  mapLink.href = `https://www.openstreetmap.org/#map=${state.mapZoom}/${lat}/${lon}`;
+  mapLink.textContent = `Latitude: ${lat} °, Longitude: ${lon} °`;
+
+  resetMap();
+  const map = L.map("mapid");
+  map.setView([lat, lon], state.mapZoom);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  // https://leafletjs.com/reference.html#marker
+  L.marker([lat, lon], { id: "my-pin", draggable: true })
+    .addTo(map)
+    .bindPopup("Weather")
+    .on("dragend", function (event) {
+      const marker = event.target;
+      const position = marker.getLatLng();
+      console.log(position);
+      state.lat = position.lat;
+      state.lon = position.lng;
+      marker
+        .setLatLng(position, { id: "my-pin", draggable: true })
+        .bindPopup(position)
+        .update();
+      setTimeout(() => {
+        drawWeather();
+      }, 1000);
+    });
+
+  // .openPopup();
+  map.on("zoomend", function () {
+    state.mapZoom = map.getZoom();
+  });
+
+  const excludes = "minutely,daily";
+  const url = `./weather?lng=${lon}&lat=${lat}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  console.log(data);
+  document.querySelector(".wind").textContent = Math.round(
+    data.current.wind_speed
+  );
+  document.querySelector(".temp").textContent = Math.round(data.current.temp);
+  document.querySelector(".feels_like").textContent = Math.round(
+    data.current.feels_like
+  );
+  document.querySelector(".humidity").textContent = Math.round(
+    data.current.humidity
+  );
+  // did you know, when weather reports say "Wind North", they really mean FROM the north? - so flip it to draw the pointer
+  const deg = (data.current.wind_deg + 180) % 360;
+  // animate the shortest rotation possible - go counter-clockwise if destination degree is less than 6 o'clock (180°)
+  document.querySelector(".current .deg").style.transform = `rotate(${
+    deg > 180 ? -1 * (360 - deg) : deg
+  }deg)`;
+
+  const round = Math.round;
+  const metadata = {
+    temp: { suffix: "°", treatment: round },
+    feels_like: { suffix: "°", treatment: round },
+    humidity: { suffix: "%", treatment: round },
+    uvi: { treatment: (value) => value },
+    wind_speed: { suffix: "mph", treatment: round }
+  };
+  Array.from(
+    document.querySelectorAll("#container-to-insert-templates > *")
+  ).forEach((el) => el.remove());
+  for (let i = 0; i < state.numFourHourForecasts; i++) {
+    const nextFourHoursInstance = template.content.cloneNode(true);
+    document
+      .querySelector("#container-to-insert-templates")
+      .appendChild(nextFourHoursInstance);
+  }
+
+  const hourlySlots = document.querySelectorAll(".hourly > div:not(.label)");
+  hourlySlots.forEach((slot, i) => {
+    Object.keys(metadata).forEach((key) => {
+      const dataEl = document.createElement("div");
+      const cur = data.hourly[i];
+      const value = cur[key];
+      dataEl.textContent = metadata?.[key]
+        ? `${metadata[key]?.treatment(value) || value}${
+            metadata[key]?.suffix || ""
+          }`
+        : value;
+      if (key === "wind_speed") {
+        const span = document.createElement("span");
+        const degDiv = document.createElement("div");
+        degDiv.classList.add("deg");
+        degDiv.textContent = "^";
+        // did you know, when weather reports say "Wind North", they really mean FROM the north? - so flip it to draw the pointer
+        const deg = (cur.wind_deg + 180) % 360;
+        // animate the shortest rotation possible - go counter-clockwise if destination degree is less than 6 o'clock (180°)
+        degDiv.style.transform = `rotate(${
+          deg > 180 ? -1 * (360 - deg) : deg
+        }deg)`;
+        span.appendChild(degDiv);
+        dataEl.appendChild(span);
+        dataEl.classList.add("flex");
+        span.style.paddingLeft = "1ch";
+      } else if (key === "uvi") {
+        if (value < 2) {
+          dataEl.style.background = "#299501cc";
+        } else if (value < 6) {
+          dataEl.style.background = "#f7e401cc";
+        } else if (value < 8) {
+          dataEl.style.background = "#f95901cc";
+        } else if (value < 11) {
+          dataEl.style.background = "#d90011cc";
+        } else {
+          dataEl.style.background = "#6c49c9cc";
+        }
+      }
+      dataEl.classList.add(key);
+      slot.appendChild(dataEl);
+    });
+  });
+  const hourlySlotLabels = document.querySelectorAll(
+    ".hourly-labels > div:not(.label)"
+  );
+
+  hourlySlotLabels.forEach((label, i) => {
+    Object.keys(metadata).forEach((key) => {
+      const value = data.hourly[i];
+      const hour = new Date(value?.dt * 1000).getHours();
+      label.textContent = `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
+      const weather = value?.weather?.[0];
+      const hasRain = Object.hasOwn(value, "rain") ? "rain" : null;
+      const hasSnow = Object.hasOwn(value, "snow") ? "snow" : null;
+      const amountValue = value?.[hasRain || hasSnow]?.["1h"] || null;
+      const more = weather?.main;
+      const span = document.createElement("span");
+      span.textContent = `${more} ${
+        value?.pop
+          ? `(${Math.round(value?.pop * 100)}%${
+              amountValue ? ` - ${(amountValue * 0.03937008).toFixed(2)}` : ""
+            })`
+          : ""
+      }`;
+      span.style.paddingLeft = "1ch";
+      label.appendChild(span);
+    });
+  });
+  // clouds: 0
+  // dew_point: 41.59
+  // dt: 1664208000
+  // feels_like: 68.94
+  // humidity: 35
+  // pop: 0
+  // pressure: 1014
+  // temp: 70.54
+  // uvi: 1.92
+  // visibility: 10000
+  // wind_deg: 181
+  // wind_gust: 4.12
+  // wind_speed: 3.89
+  // weather: Array [ {…} ]
+  spinner.style.display = "none";
+  loadMoreButton.disabled = false;
+};
+document.addEventListener("DOMContentLoaded", async () => {
+  await drawWeather();
+  setInterval(async () => {
+    await drawWeather();
+    console.log("updated on interval");
+  }, CHECK_WEATHER_INTERVAL);
+
+  loadMoreButton.addEventListener("click", async () => {
+    ++state.numFourHourForecasts;
+    await drawWeather();
+  });
+});
+
+function getOrSetLocalStorage(key, promptStr) {
+  const currentValue = localStorage.getItem(key);
+  if (!currentValue || currentValue === "null") {
+    let answer = prompt(promptStr, "");
+    localStorage.setItem(key, answer);
+    return answer;
+  }
+  return localStorage.getItem(key);
+}
+
+function getLonLat() {
+  return new Promise((resolve, reject) => {
+    function success(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+
+      // await getOrSetLocalStorage('openWeatherLon', () => longitude)
+      // await getOrSetLocalStorage('openWeatherLat', () => latitude)
+
+      status.textContent = "";
+
+      resolve({
+        lon: longitude,
+        lat: latitude
+      });
+    }
+
+    function error() {
+      status.textContent = "Unable to retrieve your location";
+      // reject(status.textContent);
+      resolve({ lon: 0, lat: 0 });
+    }
+
+    if (!navigator.geolocation) {
+      status.textContent = "Geolocation is not supported by your browser";
+      resolve({ lon: 0, lat: 0 });
+    } else {
+      status.textContent = "Locating…";
+      navigator.geolocation.getCurrentPosition(success, error);
+    }
+  });
+}
+</script>
